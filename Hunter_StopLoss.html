@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>双因子猎手 V13.1 | 动态止损与收割终端</title>
+    <style>
+        :root {
+            --bg-color: #0b0e14; --panel-bg: #151a22; --text-main: #e0e6ed;
+            --accent-green: #00e676; --accent-red: #ff3d00; --api-blue: #00b0ff;
+            --warning-yellow: #ffd600; --border-color: #2a3241; --knife-color: #ff4081;
+        }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; }
+        .header { text-align: center; border-bottom: 2px solid var(--border-color); margin-bottom: 25px; padding-bottom: 15px; }
+        .header h1 { color: var(--accent-green); margin: 0 0 10px 0; letter-spacing: 2px; text-shadow: 0 0 10px rgba(0,230,118,0.3); }
+        .header p { margin: 0; color: #8ab4f8; font-size: 14px; }
+        
+        .input-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; background: var(--panel-bg); padding: 25px; border-radius: 8px; border: 1px solid var(--api-blue); margin-bottom: 25px; box-shadow: 0 4px 15px rgba(0, 176, 255, 0.1); }
+        .input-group label { display: block; font-size: 13px; color: var(--api-blue); margin-bottom: 8px; font-weight: bold; }
+        .input-group input { width: 100%; padding: 12px; box-sizing: border-box; background: #000; border: 1px solid var(--border-color); color: #fff; border-radius: 4px; font-size: 18px; outline: none; transition: 0.3s; font-family: 'Courier New', monospace; font-weight: bold;}
+        .input-group input:focus { border-color: var(--accent-green); box-shadow: 0 0 8px rgba(0,230,118,0.3); }
+
+        .output-grid { display: grid; grid-template-columns: 1fr 1.2fr; gap: 20px; }
+        .card { background: var(--panel-bg); border-radius: 12px; padding: 25px; border: 1px solid var(--border-color); position: relative; overflow: hidden; display: flex; flex-direction: column; }
+        .bull-card { border-top: 6px solid var(--accent-red); }
+        .osc-card { border-top: 6px solid var(--warning-yellow); }
+        
+        .card h2 { margin-top: 0; font-size: 20px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+        
+        .stat-group { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
+        .stat-row { display: flex; justify-content: space-between; align-items: center; padding: 12px 15px; background: rgba(0,0,0,0.4); border-radius: 6px; border-left: 4px solid transparent; }
+        
+        .stat-label { font-size: 14px; color: #8ab4f8; font-weight: bold; }
+        .stat-value { font-size: 22px; font-weight: bold; font-family: 'Courier New', monospace; }
+        
+        .border-blue { border-left-color: var(--api-blue); }
+        .border-red { border-left-color: var(--accent-red); }
+        .border-yellow { border-left-color: var(--warning-yellow); }
+        .border-green { border-left-color: var(--accent-green); }
+
+        .highlight-red { color: var(--accent-red); }
+        .highlight-green { color: var(--accent-green); }
+        .highlight-yellow { color: var(--warning-yellow); }
+        .highlight-blue { color: var(--api-blue); }
+
+        .discipline-box { background: rgba(0,0,0,0.2); border: 1px solid var(--border-color); border-radius: 8px; padding: 15px; flex-grow: 1; }
+        .discipline-box h3 { margin: 0 0 12px 0; font-size: 15px; color: #fff; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px; }
+        .discipline-list { list-style: none; padding: 0; margin: 0; font-size: 13px; color: #b0bec5; line-height: 1.6; }
+        .discipline-list li { margin-bottom: 8px; padding-left: 15px; position: relative; }
+        .discipline-list li::before { content: '►'; position: absolute; left: 0; color: var(--api-blue); font-size: 10px; top: 3px; }
+        
+        /* 震荡市专属“三把刀”样式 */
+        .knives-box { margin-top: 15px; padding: 12px; background: rgba(255, 64, 129, 0.05); border: 1px dashed var(--knife-color); border-radius: 6px; }
+        .knives-title { color: var(--knife-color); font-weight: bold; font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 5px; }
+        .knife-item { font-size: 12px; color: #ccc; margin-bottom: 6px; display: flex; align-items: flex-start; gap: 8px; }
+        .knife-icon { color: var(--knife-color); font-size: 14px; line-height: 1; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>双因子猎手 V13.1 | 动态风控精算终端</h1>
+        <p>买入定生杀：数学预期 (1.5R) vs 盘面现实 (三把刀) 终极闭环</p>
+    </div>
+
+    <div class="input-grid">
+        <div class="input-group">
+            <label>🏦 账户总资金 (元)</label>
+            <input type="number" id="capital" value="100000" oninput="runCalc()">
+        </div>
+        <div class="input-group">
+            <label>🎯 买入现价 (元) [触发计算]</label>
+            <input type="number" id="price" placeholder="例如: 15.30" oninput="runCalc()">
+        </div>
+        <div class="input-group">
+            <label>📏 今日 ATR(14) 数值</label>
+            <input type="number" id="atr" placeholder="例如: 0.85" oninput="runCalc()">
+        </div>
+    </div>
+
+    <div class="output-grid" id="resGrid" style="display: none;">
+        
+        <div class="card bull-card">
+            <h2 style="color:var(--accent-red)">🔥 牛市·主升突破模式 (1.5%风控)</h2>
+            <div class="stat-group">
+                <div class="stat-row border-blue">
+                    <span class="stat-label">建议建仓数量</span>
+                    <span class="stat-value highlight-blue" id="bShares">0 股</span>
+                </div>
+                <div class="stat-row border-red">
+                    <span class="stat-label">第一道 (初始ATR保命)</span>
+                    <span class="stat-value highlight-red" id="bStop1">0.00</span>
+                </div>
+                <div class="stat-row border-red">
+                    <span class="stat-label">第二道 (趋势防线)</span>
+                    <span class="stat-value highlight-red" style="font-size: 16px;">跌破 MA20 均线</span>
+                </div>
+                <div class="stat-row border-green">
+                    <span class="stat-label">3R 战略止盈目标</span>
+                    <span class="stat-value highlight-green" id="bTarget">0.00</span>
+                </div>
+            </div>
+            <div class="discipline-box">
+                <h3>军规执行法典</h3>
+                <ul class="discipline-list">
+                    <li><b>买入即挂单：</b> 必须挂入第一道物理防线防止日内黑天鹅。</li>
+                    <li><b>拒绝下车：</b> 只要收盘不破 MA20，无视一切日内震荡洗盘，死拿主升浪。</li>
+                    <li><b>动态跟进：</b> 接近 3R 目标或涨幅巨大时，可将防守线升维至 MA5 贴身肉搏。</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="card osc-card">
+            <h2 style="color:var(--warning-yellow)">🌊 震荡市·龙回头模式 (1.0%风控)</h2>
+            <div class="stat-group">
+                <div class="stat-row border-blue" style="padding: 8px 15px;">
+                    <span class="stat-label">建议建仓数量</span>
+                    <span class="stat-value highlight-blue" id="oShares">0 股</span>
+                </div>
+                <div class="stat-row border-red" style="padding: 8px 15px;">
+                    <span class="stat-label">第一步: 初始止损 (保命)</span>
+                    <span class="stat-value highlight-red" id="oStop1">0.00</span>
+                </div>
+                <div class="stat-row border-green" style="padding: 8px 15px; background: rgba(0,230,118,0.1);">
+                    <span class="stat-label">第二步: 1.5R 斩首 (半仓落袋)</span>
+                    <span class="stat-value highlight-green" id="oTarget">0.00</span>
+                </div>
+                <div class="stat-row border-yellow" style="padding: 8px 15px;">
+                    <span class="stat-label">第三步: 底仓保本线 (挂条件单)</span>
+                    <span class="stat-value highlight-yellow" id="oStop2">0.00</span>
+                </div>
+            </div>
+            
+            <div class="discipline-box" style="border-color: var(--warning-yellow);">
+                <h3 style="color: var(--warning-yellow);">⚔️ 收割闭环与盘面现实</h3>
+                <ul class="discipline-list">
+                    <li><span style="color:#fff;">【触及 1.5R】：</span>数学预期达成，立刻强制市价减仓 50%！</li>
+                    <li><span style="color:#fff;">【减仓后】：</span>止损提至<b>保本线</b>，底仓交由“三把刀”榨取。</li>
+                </ul>
+                
+                <div class="knives-box">
+                    <div class="knives-title">⚠️ 悬崖勒马：三把刀动态逃顶 (优先级最高)</div>
+                    <div style="font-size: 11px; color:#8ab4f8; margin-bottom: 8px;">注：未达 1.5R 前若触发此三项，同样无条件全仓逃命！</div>
+                    <div class="knife-item"><span class="knife-icon">🔪</span><div><b>均线绞杀：</b>收盘跌破 MA5(爆拉时) 或 MA10(温和时)。</div></div>
+                    <div class="knife-item"><span class="knife-icon">🔪</span><div><b>情绪极值：</b>日线 RSI>75 或 BIAS>15%，次日冲高清仓。</div></div>
+                    <div class="knife-item"><span class="knife-icon">🔪</span><div><b>穹顶滞涨：</b>撞击前高/MA60 + 放天量收长上影线/十字星。</div></div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+function runCalc() {
+    const cap = parseFloat(document.getElementById('capital').value);
+    const prc = parseFloat(document.getElementById('price').value);
+    const atr = parseFloat(document.getElementById('atr').value);
+    const grid = document.getElementById('resGrid');
+
+    if (isNaN(prc) || isNaN(atr) || prc <= 0 || atr <= 0) {
+        grid.style.display = 'none';
+        return;
+    }
+
+    grid.style.display = 'grid';
+
+    // === 基础物理风控运算 ===
+    const stopVal = prc - (1.5 * atr);
+    const unitRisk = prc - stopVal;
+
+    // === 🔥 牛市 (1.5% Risk, 3R Target) ===
+    const bRisk = cap * 0.015;
+    const bShares = Math.floor((bRisk / unitRisk) / 100) * 100;
+    const bTarget = prc + (3 * unitRisk);
+
+    // === 🌊 震荡市 (1.0% Risk, 1.5R Target, 0.5% Buffer) ===
+    const oRisk = cap * 0.01;
+    const oShares = Math.floor((oRisk / unitRisk) / 100) * 100;
+    const oTarget = prc + (1.5 * unitRisk);
+    const oStop2 = prc * 1.005;
+
+    // 填充数据 (保留两位小数)
+    document.getElementById('bShares').innerText = bShares + " 股";
+    document.getElementById('bStop1').innerText = stopVal.toFixed(2);
+    document.getElementById('bTarget').innerText = bTarget.toFixed(2);
+
+    document.getElementById('oShares').innerText = oShares + " 股";
+    document.getElementById('oStop1').innerText = stopVal.toFixed(2);
+    document.getElementById('oStop2').innerText = oStop2.toFixed(2);
+    document.getElementById('oTarget').innerText = oTarget.toFixed(2);
+}
+</script>
+
+</body>
+</html>

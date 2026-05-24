@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>动量猎手 V23.0 | 量化风控终端</title>
+    <title>动量猎手 V23.0 | 量化风控终端 (双轨融合版)</title>
     <style>
         :root {
             --bg-color: #0b0e14; --panel-bg: #151a22; --text-main: #e0e6ed;
@@ -17,8 +17,8 @@
         
         .input-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; background: var(--panel-bg); padding: 25px; border-radius: 8px; border: 1px solid var(--border-color); margin-bottom: 25px; }
         .input-group label { display: block; font-size: 13px; color: #8ab4f8; margin-bottom: 8px; font-weight: bold; }
-        .input-group input { width: 100%; padding: 12px; box-sizing: border-box; background: #000; border: 1px solid var(--border-color); color: #fff; border-radius: 4px; font-size: 18px; outline: none; transition: 0.3s; font-family: 'Courier New', monospace; font-weight: bold;}
-        .input-group input:focus { border-color: var(--api-blue); box-shadow: 0 0 8px rgba(0, 176, 255, 0.3); }
+        .input-group input, .input-group select { width: 100%; padding: 12px; box-sizing: border-box; background: #000; border: 1px solid var(--border-color); color: #fff; border-radius: 4px; font-size: 16px; outline: none; transition: 0.3s; font-family: 'Courier New', monospace; font-weight: bold;}
+        .input-group input:focus, .input-group select:focus { border-color: var(--api-blue); box-shadow: 0 0 8px rgba(0, 176, 255, 0.3); }
         .full-width { grid-column: span 2; }
 
         .card { background: var(--panel-bg); border-radius: 12px; padding: 25px; border: 1px solid var(--api-blue); border-top: 6px solid var(--api-blue); box-shadow: 0 4px 20px rgba(0, 176, 255, 0.1); }
@@ -46,8 +46,9 @@
         .discipline-list li { margin-bottom: 8px; padding-left: 15px; position: relative; }
         .discipline-list li::before { content: '►'; position: absolute; left: 0; color: var(--api-blue); font-size: 10px; top: 3px; }
         
-        #warningBox, #stopHitBox { display: none; margin-top: 10px; padding: 12px; border-radius: 6px; font-size: 14px; font-weight: bold; text-align: center; }
+        #warningBox, #stopHitBox, #errorBox { display: none; margin-top: 10px; padding: 12px; border-radius: 6px; font-size: 14px; font-weight: bold; text-align: center; }
         #warningBox { background: rgba(255, 214, 0, 0.1); border: 1px solid var(--warning-yellow); color: var(--warning-yellow); }
+        #errorBox { background: rgba(255, 61, 0, 0.1); border: 1px solid var(--accent-red); color: var(--accent-red); }
         #stopHitBox { background: var(--accent-red); color: #fff; animation: pulse 1.5s infinite; }
 
         @keyframes pulse {
@@ -62,10 +63,18 @@
 <div class="container">
     <div class="header">
         <h1>动量猎手 V23.0 | 动态兵力推演沙盘</h1>
-        <p>基于海龟法则：1%绝对回撤控制 & 2.5ATR 吊灯追踪止损</p>
+        <p>支持 主板(10CM) 与 创业/科创板(20CM) 专属量化算法切换</p>
     </div>
 
     <div class="input-grid">
+        <div class="input-group full-width">
+            <label>⚔️ 选择作战阵地 (自动切换申报股数规则)</label>
+            <select id="boardType" onchange="runCalc()">
+                <option value="main">主板 (10CM) - 100股起购，100股整数倍递增</option>
+                <option value="chinext">创业板 (20CM) - 100股起购，100股整数倍递增</option>
+                <option value="star">科创板 (20CM) - 200股起购，超额 1股递增</option>
+            </select>
+        </div>
         <div class="input-group">
             <label>🏦 账户总资金 (元)</label>
             <input type="number" id="capital" value="1000000" oninput="runCalc()">
@@ -89,8 +98,9 @@
         
         <div id="stopHitBox">🛑 警报：当前价已击穿 2.5ATR 吊灯防线，系统判定无条件清仓！</div>
         <div id="warningBox">⚠️ 风控介入：目标股数已触及单只股票 30% 仓位上限！</div>
+        <div id="errorBox">🛑 资金不足：按1%风控计算出的理论股数，无法满足该板块的最低起步门槛！</div>
 
-        <div class="stat-group" style="margin-top: 15px;">
+        <div class="stat-group" style="margin-top: 15px;" id="statGroup">
             <div class="stat-row border-blue">
                 <span class="stat-label">精确兵力拨付 (建仓数量)</span>
                 <span class="stat-value highlight-blue" id="rShares">0 股</span>
@@ -108,8 +118,8 @@
         <div class="discipline-box">
             <h3>V23.0 铁律法典</h3>
             <ul class="discipline-list">
-                <li><b>左侧物理锁：</b> 买入前核实，若当前价未站上 <b>MA20 均线</b>，拒绝开火。</li>
-                <li><b>一键挂单：</b> 无论建仓还是持仓，算出【硬止损防线】后，立刻在券商设置条件单，跌破市价止损。</li>
+                <li><b>左侧物理锁：</b> 必须确认当前价已站上 <b>MA20 均线</b> 且 5日均量大于20日均量 (温和放量)。</li>
+                <li><b>一键挂单：</b> 建仓后算出【硬止损防线】，立刻在券商设置条件单，跌破市价止损。</li>
                 <li><b>动态上移：</b> 只要股票创新高，每日更新【买入后最高价】，止损线将自动上移，锁住主升利润。</li>
                 <li><b>系统性防线：</b> 沪深300指数 15日跌幅 > 2% 时，无视一切个股形态，全域空仓。</li>
             </ul>
@@ -119,42 +129,66 @@
 
 <script>
 function runCalc() {
+    const board = document.getElementById('boardType').value;
     const cap = parseFloat(document.getElementById('capital').value);
     const prc = parseFloat(document.getElementById('price').value);
     const atr = parseFloat(document.getElementById('atr').value);
     let high = parseFloat(document.getElementById('highest').value);
     const grid = document.getElementById('resGrid');
+    const statGroup = document.getElementById('statGroup');
     
     const warnBox = document.getElementById('warningBox');
     const hitBox = document.getElementById('stopHitBox');
+    const errorBox = document.getElementById('errorBox');
 
     if (isNaN(cap) || isNaN(prc) || isNaN(atr) || prc <= 0 || atr <= 0) {
         grid.style.display = 'none';
         return;
     }
     
-    // 如果没有输入最高价，默认最高价就是当前价（用于建仓推演）
     if (isNaN(high) || high < prc) {
         high = prc;
     }
 
     grid.style.display = 'block';
+    statGroup.style.display = 'flex';
     warnBox.style.display = 'none';
     hitBox.style.display = 'none';
+    errorBox.style.display = 'none';
 
     // === V23.0 量化公式 ===
-    const maxRisk = cap * 0.01;         // 绝对损耗 1%
-    const stopDist = 2.5 * atr;         // 2.5倍 ATR 止损空间
-    const stopPrice = high - stopDist;  // 吊灯止损价
+    const maxRisk = cap * 0.01;         
+    const stopDist = 2.5 * atr;         
+    const stopPrice = high - stopDist;  
 
-    // 计算股数 (向下取整到 100 的倍数)
-    let shares = Math.floor((maxRisk / stopDist) / 100) * 100;
-    if (shares < 0) shares = 0;
+    // 计算理论股数
+    let raw_shares = maxRisk / stopDist;
+    let shares = 0;
+
+    if (board === 'star') {
+        shares = Math.floor(raw_shares);
+        if (shares < 200) shares = 0;
+    } else {
+        shares = Math.floor(raw_shares / 100) * 100;
+        if (shares < 100) shares = 0;
+    }
+
+    if (shares === 0) {
+        errorBox.style.display = 'block';
+        statGroup.style.display = 'none';
+        return;
+    }
+
     let cost = shares * prc;
 
     // === 30% 仓位上限风控 ===
     if (cost > cap * 0.3) {
-        shares = Math.floor((cap * 0.3 / prc) / 100) * 100;
+        let limit_raw_shares = (cap * 0.3) / prc;
+        if (board === 'star') {
+            shares = Math.floor(limit_raw_shares);
+        } else {
+            shares = Math.floor(limit_raw_shares / 100) * 100;
+        }
         cost = shares * prc;
         warnBox.style.display = 'block';
     }
@@ -169,7 +203,6 @@ function runCalc() {
         document.getElementById('rShares').innerText = shares + " 股";
     }
 
-    // 填充数据
     document.getElementById('rCost').innerText = cost.toLocaleString('zh-CN', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + " 元 (" + ratio + "%)";
     document.getElementById('rStop').innerText = stopPrice.toFixed(2) + " 元";
 }

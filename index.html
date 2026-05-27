@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <title>动量猎手 V23.0 | 量化风控终端 (双轨融合版)</title>
+    <title>动量猎手 V32.0 | 量化风控终端 (双轨融合版)</title>
     <style>
         :root {
             --bg-color: #0b0e14; --panel-bg: #151a22; --text-main: #e0e6ed;
@@ -62,7 +62,7 @@
 
 <div class="container">
     <div class="header">
-        <h1>动量猎手 V23.0 | 动态兵力推演沙盘</h1>
+        <h1>动量猎手 V32.0 | 动态兵力推演沙盘</h1>
         <p>支持 主板(10CM) 与 创业/科创板(20CM) 专属量化算法切换</p>
     </div>
 
@@ -94,9 +94,9 @@
     </div>
 
     <div class="card" id="resGrid" style="display: none;">
-        <h2 style="color:var(--api-blue)">🤖 V23.0 量化执行指令</h2>
+        <h2 style="color:var(--api-blue)">🤖 V32.0 量化执行指令</h2>
         
-        <div id="stopHitBox">🛑 警报：当前价已击穿 2.5ATR 吊灯防线，系统判定无条件清仓！</div>
+        <div id="stopHitBox">🛑 警报：当前价已击穿 1.5ATR 吊灯防线，系统判定无条件清仓！</div>
         <div id="warningBox">⚠️ 风控介入：目标股数已触及单只股票 30% 仓位上限！</div>
         <div id="errorBox">🛑 资金不足：按1%风控计算出的理论股数，无法满足该板块的最低起步门槛！</div>
 
@@ -110,13 +110,13 @@
                 <span class="stat-value highlight-yellow" id="rCost">0.00 (0.00%)</span>
             </div>
             <div class="stat-row border-red">
-                <span class="stat-label">硬止损防线 (最高价 - 2.5ATR)</span>
+                <span class="stat-label">硬止损防线 (最高价 - 1.5ATR)</span>
                 <span class="stat-value highlight-red" id="rStop">0.00</span>
             </div>
         </div>
         
         <div class="discipline-box">
-            <h3>V23.0 铁律法典</h3>
+            <h3>V32.0 铁律法典</h3>
             <ul class="discipline-list">
                 <li><b>左侧物理锁：</b> 必须确认当前价已站上 <b>MA20 均线</b> 且 5日均量大于20日均量 (温和放量)。</li>
                 <li><b>一键挂单：</b> 建仓后算出【硬止损防线】，立刻在券商设置条件单，跌破市价止损。</li>
@@ -156,9 +156,9 @@ function runCalc() {
     hitBox.style.display = 'none';
     errorBox.style.display = 'none';
 
-    // === V23.0 量化公式 ===
+    // === V32.0 量化公式 ===
     const maxRisk = cap * 0.01;         
-    const stopDist = 2.5 * atr;         
+    const stopDist = 1.5 * atr;         
     const stopPrice = high - stopDist;  
 
     // 计算理论股数
